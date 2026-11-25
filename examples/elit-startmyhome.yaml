@@ -1,0 +1,22 @@
+# ELIT Energia, StartMyHome (2025): monthly PUN Index GME by band.
+# Checked on the July-October 2026 invoices (within EUR 0.03 of each total without TV fee).
+name: ELIT StartMyHome
+pun: monthly_bands
+vars:
+  spread: 0.018        # EUR/kWh, fixed
+  losses: 0.10         # applied to PUN + spread
+  pd: 0.01773          # dispatching, from the "Box dell'offerta" of each invoice (0.02556 until September 2026)
+  discount: -0.0025    # SCONTO_CONSUMO
+  network: 0.047922    # "spesa per la rete e oneri generali" / kWh, changes every quarter
+per_kwh:
+  energy: "{{ (pun + spread) * (1 + losses) + pd + discount }}"
+  network: "{{ network }}"
+  excise: 0.0227
+per_month:
+  supplier: 5.76
+  network_fixed: 1.92
+  power: "{{ 1.975556 * 4.5 }}"   # EUR/kW/month x 4.5 kW
+  green_energy: 2.50
+  advice: 1.50
+  email_bonus: -0.25
+vat: 0.10

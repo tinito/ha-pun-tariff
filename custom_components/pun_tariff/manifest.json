@@ -1,0 +1,12 @@
+{
+  "domain": "pun_tariff",
+  "name": "PUN Tariff",
+  "codeowners": ["@tinito"],
+  "config_flow": true,
+  "documentation": "https://github.com/tinito/ha-pun-tariff",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/tinito/ha-pun-tariff/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

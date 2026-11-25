@@ -1,0 +1,144 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fonte del PUN",
+        "description": "Da dove leggere il PUN Index GME. L'API ufficiale del GME richiede credenziali, da chiedere al GME (gratuite per uso personale). Il download dal sito del GME non le richiede ma non è un'interfaccia documentata.",
+        "data": {
+          "source": "Fonte"
+        }
+      },
+      "credentials": {
+        "title": "Credenziali API GME",
+        "description": "Utente e password inviati dal GME dopo la registrazione su api.mercatoelettrico.org.",
+        "data": {
+          "username": "Utente",
+          "password": "Password"
+        }
+      },
+      "contract": {
+        "title": "Contratto",
+        "description": "Sensore di energia del contatore e contratto in YAML. Vedi la guida al contratto nella documentazione. {error}",
+        "data": {
+          "energy_sensor": "Sensore di energia dalla rete (kWh)",
+          "contract": "Contratto"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Credenziali API GME",
+        "description": "Il GME ha rifiutato le credenziali: inseriscile di nuovo.",
+        "data": {
+          "username": "Utente",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Il GME ha rifiutato utente o password.",
+      "cannot_connect": "Impossibile raggiungere l'API del GME.",
+      "invalid_contract": "Il contratto non è valido."
+    },
+    "abort": {
+      "reauth_successful": "Credenziali aggiornate."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Contratto",
+        "description": "Sensore di energia e contratto in YAML. I contratti a intervalli tengono i costi già contati nel mese; quelli mensili ricalcolano il mese. {error}",
+        "data": {
+          "energy_sensor": "Sensore di energia dalla rete (kWh)",
+          "contract": "Contratto"
+        }
+      }
+    },
+    "error": {
+      "invalid_contract": "Il contratto non è valido."
+    }
+  },
+  "selector": {
+    "source": {
+      "options": {
+        "api": "API ufficiale GME (credenziali)",
+        "web": "Download dal sito GME (senza credenziali)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "price": {
+        "name": "Prezzo attuale"
+      },
+      "month_cost": {
+        "name": "Costo del mese"
+      },
+      "month_energy": {
+        "name": "Energia del mese"
+      },
+      "previous_month_cost": {
+        "name": "Costo del mese scorso"
+      },
+      "pun": {
+        "name": "PUN attuale"
+      },
+      "pun_month_f1": {
+        "name": "PUN F1 del mese"
+      },
+      "pun_month_f2": {
+        "name": "PUN F2 del mese"
+      },
+      "pun_month_f3": {
+        "name": "PUN F3 del mese"
+      },
+      "pun_month_mono": {
+        "name": "PUN del mese"
+      },
+      "band": {
+        "name": "Fascia",
+        "state": {
+          "F1": "F1",
+          "F2": "F2",
+          "F3": "F3"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "choose_entry": {
+      "message": "Scegli la voce di PUN Tariff con config_entry_id."
+    }
+  },
+  "services": {
+    "calculate_bill": {
+      "name": "Calcola una bolletta",
+      "description": "Bolletta di un mese dai kWh per fascia, con il contratto configurato e il PUN di quel mese. Serve a verificare il contratto su una fattura. I contratti a intervalli sono approssimati con le medie per fascia.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Voce",
+          "description": "Voce di PUN Tariff (serve solo se ce ne sono più di una)."
+        },
+        "month": {
+          "name": "Mese",
+          "description": "Mese della fattura, AAAA-MM."
+        },
+        "kwh_f1": {
+          "name": "kWh F1",
+          "description": "kWh in fascia F1 (tutti i kWh qui per le fatture monorarie)."
+        },
+        "kwh_f2": {
+          "name": "kWh F2",
+          "description": "kWh in fascia F2."
+        },
+        "kwh_f3": {
+          "name": "kWh F3",
+          "description": "kWh in fascia F3."
+        },
+        "expected_total": {
+          "name": "Totale fattura",
+          "description": "Totale della fattura senza canone TV, per avere la differenza."
+        }
+      }
+    }
+  }
+}

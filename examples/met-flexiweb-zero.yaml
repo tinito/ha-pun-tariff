@@ -1,0 +1,19 @@
+# MET Energia Italia, FlexiWeb ZERO Luce Online (conditions of 19/11/2026): PUN Index GME
+# quarter-hourly with losses, no spread, ARERA CDISPD for dispatching. Not yet checked on an invoice.
+# The CTE table says 132 EUR/POD/year, the text and the summary sheet 72 EUR/year: check with MET.
+name: MET FlexiWeb ZERO Luce
+pun: quarter_hourly
+vars:
+  losses: 0.10
+  cdispd: 0.016776     # ARERA, changes every quarter
+  network: 0.047888    # transport + ASOS + ARIM per kWh, changes every quarter
+per_kwh:
+  energy: "{{ pun * (1 + losses) + cdispd }}"
+  network: "{{ network }}"
+  excise: 0.0227
+per_month:
+  supplier: "{{ 72 / 12 }}"
+  app: 1.00
+  network_fixed: 1.92
+  power: "{{ 1.975556 * 4.5 }}"
+vat: 0.10

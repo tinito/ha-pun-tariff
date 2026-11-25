@@ -1,0 +1,144 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PUN price source",
+        "description": "Where to read the PUN Index GME. The official GME API needs credentials, requested from GME (free for personal use). The GME website download needs none but is not a documented interface.",
+        "data": {
+          "source": "Source"
+        }
+      },
+      "credentials": {
+        "title": "GME API credentials",
+        "description": "User and password sent by GME after the registration at api.mercatoelettrico.org.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "contract": {
+        "title": "Contract",
+        "description": "Energy sensor of the grid meter and the contract in YAML. See the contract guide in the documentation. {error}",
+        "data": {
+          "energy_sensor": "Grid energy sensor (kWh)",
+          "contract": "Contract"
+        }
+      },
+      "reauth_confirm": {
+        "title": "GME API credentials",
+        "description": "GME rejected the credentials: enter them again.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "GME rejected the username or password.",
+      "cannot_connect": "Cannot reach the GME API.",
+      "invalid_contract": "The contract is not valid."
+    },
+    "abort": {
+      "reauth_successful": "Credentials updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Contract",
+        "description": "Energy sensor and contract in YAML. Interval contracts keep the costs already counted this month; monthly contracts recompute the month. {error}",
+        "data": {
+          "energy_sensor": "Grid energy sensor (kWh)",
+          "contract": "Contract"
+        }
+      }
+    },
+    "error": {
+      "invalid_contract": "The contract is not valid."
+    }
+  },
+  "selector": {
+    "source": {
+      "options": {
+        "api": "Official GME API (credentials)",
+        "web": "GME website download (no credentials)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "price": {
+        "name": "Price now"
+      },
+      "month_cost": {
+        "name": "Cost this month"
+      },
+      "month_energy": {
+        "name": "Energy this month"
+      },
+      "previous_month_cost": {
+        "name": "Cost last month"
+      },
+      "pun": {
+        "name": "PUN now"
+      },
+      "pun_month_f1": {
+        "name": "PUN F1 this month"
+      },
+      "pun_month_f2": {
+        "name": "PUN F2 this month"
+      },
+      "pun_month_f3": {
+        "name": "PUN F3 this month"
+      },
+      "pun_month_mono": {
+        "name": "PUN this month"
+      },
+      "band": {
+        "name": "Band",
+        "state": {
+          "F1": "F1",
+          "F2": "F2",
+          "F3": "F3"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "choose_entry": {
+      "message": "Choose the PUN Tariff entry with config_entry_id."
+    }
+  },
+  "services": {
+    "calculate_bill": {
+      "name": "Calculate a bill",
+      "description": "Bill of a month from its kWh by band, with the configured contract and the PUN of that month. Use it to check the contract against an invoice. Interval contracts are approximated with the band averages.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Entry",
+          "description": "PUN Tariff entry (needed only if there are several)."
+        },
+        "month": {
+          "name": "Month",
+          "description": "Month of the invoice, YYYY-MM."
+        },
+        "kwh_f1": {
+          "name": "kWh F1",
+          "description": "kWh in band F1 (all kWh here for single-band invoices)."
+        },
+        "kwh_f2": {
+          "name": "kWh F2",
+          "description": "kWh in band F2."
+        },
+        "kwh_f3": {
+          "name": "kWh F3",
+          "description": "kWh in band F3."
+        },
+        "expected_total": {
+          "name": "Invoice total",
+          "description": "Total of the invoice without the TV fee, to get the difference."
+        }
+      }
+    }
+  }
+}

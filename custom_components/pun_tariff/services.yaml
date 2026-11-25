@@ -1,0 +1,23 @@
+calculate_bill:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: pun_tariff
+    month:
+      required: true
+      example: "2026-10"
+      selector:
+        text:
+    kwh_f1:
+      selector:
+        number: {min: 0, max: 100000, step: 0.01, unit_of_measurement: kWh, mode: box}
+    kwh_f2:
+      selector:
+        number: {min: 0, max: 100000, step: 0.01, unit_of_measurement: kWh, mode: box}
+    kwh_f3:
+      selector:
+        number: {min: 0, max: 100000, step: 0.01, unit_of_measurement: kWh, mode: box}
+    expected_total:
+      selector:
+        number: {min: 0, max: 100000, step: 0.01, unit_of_measurement: EUR, mode: box}
