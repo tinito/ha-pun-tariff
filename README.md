@@ -9,8 +9,10 @@ describe in YAML: spread, losses, dispatching, network and system charges, excis
   monthly flat, hourly or quarter-hourly.
 - **Matches the invoice.** On a monthly-by-band contract the month total converges to the
   invoice: the July–October 2026 invoices of the author's contract are reproduced within €0.03.
-- **Official prices.** The PUN comes from the GME API (credentials from GME, free for personal
-  use) or, without credentials, from the GME website download. History is read from GME on demand.
+- **Official prices, with or without credentials.** The PUN comes from the GME website download,
+  which needs no registration, or from the official GME API (credentials from GME, free for
+  personal use). With the API, the website is the automatic fallback. History is read from GME on
+  demand.
 - **Energy dashboard.** *Cost this month* works as the grid cost entity (`stat_cost`).
 - **Check your contract.** The `pun_tariff.calculate_bill` action prices a past month from the kWh
   of an invoice and returns the difference.
@@ -35,13 +37,19 @@ attributes of the cost sensors.
 1. HACS / Marketplace → custom repository `tinito/ha-pun-tariff` (Integration), install, restart.
 2. Settings → Devices & services → Add integration → **PUN Tariff**.
 3. Choose the price source:
+   - **GME website download** (default): no credentials. It uses the download behind the GME
+     results page, the same data as the API, but not a documented interface: it may change.
    - **Official GME API**: register at
      [api.mercatoelettrico.org](https://api.mercatoelettrico.org/users/RegistrationForm/RegistrationRequest).
      GME asks for the acceptance of the terms of use and a signed declaration sent by PEC, then
      emails user and password. Free for personal, informational use; cite the source as
-     "Gestore dei Mercati Energetici S.p.A." (the entities carry this attribution).
-   - **GME website download**: no credentials. It uses the download behind the GME results page,
-     which is not a documented interface and may change.
+     "Gestore dei Mercati Energetici S.p.A." (the entities carry this attribution). When the API
+     does not answer, the prices come from the website; when it rejects the credentials, Home
+     Assistant also asks for new ones.
+
+   Start with the website and switch to the API when the credentials arrive: Settings → Devices &
+   services → PUN Tariff → ⋮ → **Reconfigure**. The `source` attribute of *PUN now* shows which
+   source answered last.
 4. Pick the energy sensor of the grid meter (kWh, increasing) and write the contract: see the
    **[contract guide](docs/contract-guide.md)**, which also has a brief for having an AI assistant
    write the contract from your invoices. Examples are in [examples](examples/).
@@ -50,7 +58,8 @@ attributes of the cost sensors.
 
 ## How it works
 
-- **PUN:** downloaded once a day from the start of the month to tomorrow (day-ahead prices are
+- **PUN:** from the website or the API, with the same values: the website download returns hours
+  and quarter hours together, the API one granularity per request. Downloaded once a day from the start of the month to tomorrow (day-ahead prices are
   published around 13:00), with an extra attempt in the afternoon until tomorrow's prices arrive.
   The monthly price of a band is the arithmetic mean of the hourly PUN of its hours, which
   reproduces the official monthly values to the fifth decimal.
@@ -79,6 +88,10 @@ Assistant:
 pip install pytest jinja2 pyyaml
 pytest
 ```
+
+`PUN_TARIFF_LIVE=1 pytest tests/test_live.py` (with `aiohttp`, in an environment without
+`pytest-homeassistant-custom-component`, which blocks the network) downloads October 2026 from the GME
+website and checks the official monthly PUN by band.
 
 The integration tests in `tests_ha` run Home Assistant with the price download mocked:
 

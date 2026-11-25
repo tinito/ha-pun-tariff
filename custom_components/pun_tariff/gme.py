@@ -8,6 +8,9 @@ Two sources, both returning the same normalized `PricePoint` list:
 - `GmeWebClient`: the ZIP of daily XML files behind the public download page of the GME site,
   used by other integrations. No credentials, but not a documented interface.
 
+`PriceClient` puts them together: the API when credentials are configured, the GME site without
+them or whenever the API fails.
+
 Hours (1-25) and quarter periods (1-100) count from local midnight (Europe/Rome), so a
 daylight-saving day has 23/25 hours and 92/100 quarters. Prices are published in EUR/MWh and
 returned in EUR/kWh. The parse functions are pure and tested; the clients only do the I/O.
@@ -17,11 +20,15 @@ from __future__ import annotations
 import base64
 import io
 import json
+import logging
+from collections.abc import Callable
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
+
+_LOGGER = logging.getLogger(__name__)
 
 ROME = ZoneInfo("Europe/Rome")
 API_URL = "https://api.mercatoelettrico.org/request/api/v1"
@@ -36,6 +43,8 @@ WEB_HEADERS = {
     "userid": "-1",
 }
 SOURCE_NAME = "Gestore dei Mercati Energetici S.p.A."
+SOURCE_API = "api"
+SOURCE_WEB = "web"
 
 
 class GmeError(Exception):
@@ -181,3 +190,43 @@ class GmeApiClient:
                 raise GmeError((body or {}).get("ResultRequest") or "empty GME API response")
             return await self._executor(parse_api_content, content, 60 if granularity == "PT60" else 15)
         raise GmeAuthError("GME API token rejected")
+
+
+class PriceClient:
+    """The GME API when configured, the GME site without credentials or when the API fails.
+
+    A rejected login calls `on_auth_error` (to ask the user for new credentials) and the prices
+    still come from the site. `last_source` tells which source answered the last request.
+    """
+
+    def __init__(self, web: GmeWebClient, api: GmeApiClient | None = None,
+                 on_auth_error: Callable[[GmeAuthError], None] | None = None) -> None:
+        self._web = web
+        self._api = api
+        self._on_auth_error = on_auth_error
+        self._warned = False
+        self.last_source: str | None = None
+
+    async def fetch(self, start: date, end: date, granularity: str = "PT60") -> list[PricePoint]:
+        """PUN from `start` to `end`. The site returns hours and quarter hours in one download."""
+        if self._api is not None:
+            try:
+                points = await self._api.fetch(start, end, granularity)
+            except GmeAuthError as err:
+                if self._on_auth_error is not None:
+                    self._on_auth_error(err)
+                self._fallback(f"credentials rejected ({err})")
+            except (GmeError, TimeoutError, OSError) as err:
+                self._fallback(str(err) or type(err).__name__)
+            else:
+                self._warned = False
+                self.last_source = SOURCE_API
+                return points
+        points = await self._web.fetch(start, end)
+        self.last_source = SOURCE_WEB
+        return points
+
+    def _fallback(self, reason: str) -> None:
+        log = _LOGGER.debug if self._warned else _LOGGER.warning
+        log("GME API not available, using the GME site: %s", reason)
+        self._warned = True

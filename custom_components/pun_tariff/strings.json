@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "PUN price source",
-        "description": "Where to read the PUN Index GME. The official GME API needs credentials, requested from GME (free for personal use). The GME website download needs none but is not a documented interface.",
+        "description": "Where to read the PUN Index GME. The GME website download needs no credentials but is not a documented interface. The official GME API needs credentials, requested from GME (free for personal use); if it fails, the prices come from the website. You can change the source later with Reconfigure.",
         "data": {
           "source": "Source"
         }
@@ -26,7 +26,22 @@
       },
       "reauth_confirm": {
         "title": "GME API credentials",
-        "description": "GME rejected the credentials: enter them again.",
+        "description": "GME rejected the credentials: enter them again. Until then the prices come from the GME website.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "PUN price source",
+        "description": "Switch between the GME website download and the official GME API, for example when the GME credentials arrive.",
+        "data": {
+          "source": "Source"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "GME API credentials",
+        "description": "User and password sent by GME after the registration at api.mercatoelettrico.org.",
         "data": {
           "username": "Username",
           "password": "Password"
@@ -39,7 +54,8 @@
       "invalid_contract": "The contract is not valid."
     },
     "abort": {
-      "reauth_successful": "Credentials updated."
+      "reauth_successful": "Credentials updated.",
+      "reconfigure_successful": "Price source updated."
     }
   },
   "options": {
@@ -60,8 +76,8 @@
   "selector": {
     "source": {
       "options": {
-        "api": "Official GME API (credentials)",
-        "web": "GME website download (no credentials)"
+        "web": "GME website download (no credentials)",
+        "api": "Official GME API (credentials; falls back to the website)"
       }
     }
   },
@@ -80,7 +96,16 @@
         "name": "Cost last month"
       },
       "pun": {
-        "name": "PUN now"
+        "name": "PUN now",
+        "state_attributes": {
+          "source": {
+            "name": "Source",
+            "state": {
+              "api": "GME API",
+              "web": "GME website"
+            }
+          }
+        }
       },
       "pun_month_f1": {
         "name": "PUN F1 this month"

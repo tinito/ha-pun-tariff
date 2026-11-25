@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Fonte del PUN",
-        "description": "Da dove leggere il PUN Index GME. L'API ufficiale del GME richiede credenziali, da chiedere al GME (gratuite per uso personale). Il download dal sito del GME non le richiede ma non è un'interfaccia documentata.",
+        "description": "Da dove leggere il PUN Index GME. Il download dal sito del GME non richiede credenziali ma non è un'interfaccia documentata. L'API ufficiale del GME richiede credenziali, da chiedere al GME (gratuite per uso personale); se non risponde, i prezzi arrivano dal sito. La fonte si può cambiare in seguito con Riconfigura.",
         "data": {
           "source": "Fonte"
         }
@@ -26,7 +26,22 @@
       },
       "reauth_confirm": {
         "title": "Credenziali API GME",
-        "description": "Il GME ha rifiutato le credenziali: inseriscile di nuovo.",
+        "description": "Il GME ha rifiutato le credenziali: inseriscile di nuovo. Nel frattempo i prezzi arrivano dal sito del GME.",
+        "data": {
+          "username": "Utente",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Fonte del PUN",
+        "description": "Passa dal download dal sito del GME all'API ufficiale e viceversa, per esempio quando arrivano le credenziali del GME.",
+        "data": {
+          "source": "Fonte"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Credenziali API GME",
+        "description": "Utente e password inviati dal GME dopo la registrazione su api.mercatoelettrico.org.",
         "data": {
           "username": "Utente",
           "password": "Password"
@@ -39,7 +54,8 @@
       "invalid_contract": "Il contratto non è valido."
     },
     "abort": {
-      "reauth_successful": "Credenziali aggiornate."
+      "reauth_successful": "Credenziali aggiornate.",
+      "reconfigure_successful": "Fonte del PUN aggiornata."
     }
   },
   "options": {
@@ -60,8 +76,8 @@
   "selector": {
     "source": {
       "options": {
-        "api": "API ufficiale GME (credenziali)",
-        "web": "Download dal sito GME (senza credenziali)"
+        "web": "Download dal sito del GME (senza credenziali)",
+        "api": "API ufficiale del GME (credenziali; ripiega sul sito)"
       }
     }
   },
@@ -80,7 +96,16 @@
         "name": "Costo del mese scorso"
       },
       "pun": {
-        "name": "PUN attuale"
+        "name": "PUN attuale",
+        "state_attributes": {
+          "source": {
+            "name": "Fonte",
+            "state": {
+              "api": "API GME",
+              "web": "Sito GME"
+            }
+          }
+        }
       },
       "pun_month_f1": {
         "name": "PUN F1 del mese"

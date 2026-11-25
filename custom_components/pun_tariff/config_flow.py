@@ -1,4 +1,7 @@
-"""Config flow: price source, GME API credentials, energy sensor and contract (YAML)."""
+"""Config flow: price source, GME API credentials, energy sensor and contract (YAML).
+
+The source can be changed later with "Reconfigure", e.g. when the GME API credentials arrive.
+"""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -6,7 +9,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlowWithReload
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -27,6 +30,13 @@ EXAMPLE_CONTRACT = {
     "per_month": {"supplier": 6.0, "network_fixed": 1.92, "power": "{{ 1.975556 * 3 }}"},
     "vat": 0.10,
 }
+
+
+def _source_schema(source: str = SOURCE_WEB) -> vol.Schema:
+    return vol.Schema({
+        vol.Required(CONF_SOURCE, default=source): SelectSelector(SelectSelectorConfig(
+            options=[SOURCE_WEB, SOURCE_API], translation_key=CONF_SOURCE, mode=SelectSelectorMode.LIST)),
+    })
 
 
 def _credentials_schema(username: str = "") -> vol.Schema:
@@ -67,10 +77,7 @@ class PunTariffConfigFlow(ConfigFlow, domain=DOMAIN):
             if user_input[CONF_SOURCE] == SOURCE_API:
                 return await self.async_step_credentials()
             return await self.async_step_contract()
-        return self.async_show_form(step_id="user", data_schema=vol.Schema({
-            vol.Required(CONF_SOURCE, default=SOURCE_API): SelectSelector(SelectSelectorConfig(
-                options=[SOURCE_API, SOURCE_WEB], translation_key=CONF_SOURCE, mode=SelectSelectorMode.LIST)),
-        }))
+        return self.async_show_form(step_id="user", data_schema=_source_schema())
 
     async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -113,13 +120,35 @@ class PunTariffConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="reauth_confirm", errors=errors,
                                     data_schema=_credentials_schema(entry.data.get(CONF_USERNAME, "")))
 
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Change the price source: GME site or GME API."""
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            if user_input[CONF_SOURCE] == SOURCE_API:
+                return await self.async_step_reconfigure_credentials()
+            return self.async_update_reload_and_abort(entry, data={CONF_SOURCE: SOURCE_WEB})
+        return self.async_show_form(step_id="reconfigure",
+                                    data_schema=_source_schema(entry.data.get(CONF_SOURCE, SOURCE_WEB)))
+
+    async def async_step_reconfigure_credentials(
+            self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            error = await _check_credentials(self.hass, user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
+            if error is None:
+                return self.async_update_reload_and_abort(entry, data={CONF_SOURCE: SOURCE_API, **user_input})
+            errors["base"] = error
+        return self.async_show_form(step_id="reconfigure_credentials", errors=errors,
+                                    data_schema=_credentials_schema(entry.data.get(CONF_USERNAME, "")))
+
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlowWithReload:
         return PunTariffOptionsFlow()
 
 
-class PunTariffOptionsFlow(OptionsFlow):
+class PunTariffOptionsFlow(OptionsFlowWithReload):
     """Change the energy sensor or the contract."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

@@ -66,7 +66,7 @@ SENSORS: tuple[PunTariffSensorDescription, ...] = (
     PunTariffSensorDescription(
         key="pun", translation_key="pun", native_unit_of_measurement=PRICE_UNIT,
         state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=5,
-        value=lambda data: data.get("pun")),
+        value=lambda data: data.get("pun"), attributes=lambda data: {"source": data.get("source")}),
     *(PunTariffSensorDescription(
         key=f"pun_month_{band.lower()}", translation_key=f"pun_month_{band.lower()}",
         native_unit_of_measurement=PRICE_UNIT, state_class=SensorStateClass.MEASUREMENT,

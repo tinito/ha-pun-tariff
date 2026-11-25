@@ -10,7 +10,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, TemplateError
+from homeassistant.exceptions import TemplateError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.storage import Store
@@ -22,7 +22,7 @@ from .bands import band_at
 from .const import (CONF_CONTRACT, CONF_ENERGY_SENSOR, CONF_SOURCE, DAY_AHEAD_HOUR, DOMAIN,
                     SOURCE_API, STORAGE_VERSION, UPDATE_INTERVAL)
 from .contract import MONTHLY_BANDS, Contract, ContractError, bill, parse_contract, rates, template_variables
-from .gme import ROME, GmeApiClient, GmeAuthError, GmeError, GmeWebClient
+from .gme import ROME, GmeApiClient, GmeAuthError, GmeError, GmeWebClient, PriceClient
 from .meter import MonthMeter, PriceBook, month_averages, month_bounds, month_fraction
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,11 +71,10 @@ class PunTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.render = TemplateRenderer(hass)
         self.contract = parse_contract(options[CONF_CONTRACT])
         session = async_get_clientsession(hass)
+        api = None
         if options.get(CONF_SOURCE) == SOURCE_API:
-            self.client: GmeApiClient | GmeWebClient = GmeApiClient(
-                session, hass.async_add_executor_job, options[CONF_USERNAME], options[CONF_PASSWORD])
-        else:
-            self.client = GmeWebClient(session, hass.async_add_executor_job)
+            api = GmeApiClient(session, hass.async_add_executor_job, options[CONF_USERNAME], options[CONF_PASSWORD])
+        self.client = PriceClient(GmeWebClient(session, hass.async_add_executor_job), api, self._on_auth_error)
         self.book = PriceBook()
         self.meter: MonthMeter | None = None
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
@@ -90,6 +89,12 @@ class PunTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry.async_on_unload(async_track_time_change(self.hass, self._on_quarter, minute=[0, 15, 30, 45], second=2))
 
     # --- prices -------------------------------------------------------------------------------
+
+    @callback
+    def _on_auth_error(self, err: GmeAuthError) -> None:
+        """GME rejected the credentials: ask for new ones, the prices keep coming from the site."""
+        _LOGGER.warning("GME API credentials rejected: %s", err)
+        self.config_entry.async_start_reauth(self.hass)
 
     def averages(self, year: int, month: int) -> dict[str, float]:
         key = (year, month)
@@ -119,14 +124,10 @@ class PunTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if now.day <= 2:  # the closed month must be complete for its final bill
             first = (first - timedelta(days=1)).replace(day=1)
         try:
-            if isinstance(self.client, GmeApiClient):
-                self.book.update(await self.client.fetch(first, tomorrow, "PT60"))
-                if self.contract.pun == "quarter_hourly":
-                    self.book.update(await self.client.fetch(now.date(), tomorrow, "PT15"))
-            else:
-                self.book.update(await self.client.fetch(first, tomorrow))
-        except GmeAuthError as err:
-            raise ConfigEntryAuthFailed(str(err)) from err
+            self.book.update(await self.client.fetch(first, tomorrow, "PT60"))
+            # the API returns one granularity per request, the site both
+            if self.contract.pun == "quarter_hourly" and self.client.last_source == SOURCE_API:
+                self.book.update(await self.client.fetch(now.date(), tomorrow, "PT15"))
         except (GmeError, TimeoutError, OSError) as err:
             if not self.book.points():
                 raise UpdateFailed(f"GME prices not available: {err}") from err
@@ -203,6 +204,7 @@ class PunTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if pun_now is not None:
                 break
         data: dict[str, Any] = {"band": band, "pun": pun_now, "averages": averages, "price": None,
+                                "source": self.client.last_source,
                                 "bill": None, "previous": None, "month_start": month_bounds(now.year, now.month)[0]}
         try:
             applied = pun_now if minutes else averages.get(band if self.contract.pun == MONTHLY_BANDS else "mono")
@@ -223,10 +225,7 @@ class PunTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Bill of a past month from its kWh by band (for checking the contract against an invoice)."""
         first, end = date(year, month, 1), month_bounds(year, month)[1].date() - timedelta(days=1)
         if self.averages(year, month).get("hours", 0) < monthrange(year, month)[1] * 23:
-            if isinstance(self.client, GmeApiClient):
-                points = await self.client.fetch(first, end, "PT60")
-            else:
-                points = await self.client.fetch(first, end)
+            points = await self.client.fetch(first, end, "PT60")
             self._averages_cache[(year, month)] = month_averages(points, year, month)
         averages = self.averages(year, month)
         contract = self.contract
